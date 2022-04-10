@@ -13,6 +13,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <assert.h>
+#include <inttypes.h>
 
 // TODO: hey!? what is this?
 
@@ -63,12 +64,14 @@ int main(int argc, char **argv) {
 	if ( create_torrent_from_metainfo_file("file.torrent", (struct torrent_t*)&torrent, "file")){
 		//handle error
 	}*/
-	const char metainfo_file_name []="/home/linuxuser/Escritorio/trivial_torrent/torrent_samples/client/test_file.ttorrent";
+	const char metainfo_file_name []="/mnt/d/CODEXSAVAGE/Descargas/Projects/C/Redes/Redes_laboratorio/Client/torrent_samples/client/test_file.ttorrent";
 	const char downloaded_file_name []="test_file";
-	if ( create_torrent_from_metainfo_file(metainfo_file_name,&torrent,downloaded_file_name))
+
+	int create = create_torrent_from_metainfo_file(metainfo_file_name,&torrent,downloaded_file_name);
+	if (create < 0 )
 	{
 		//handle error
-		perror("no s'ha pogut crear");
+		printf("Error: %s\n", strerror(errno));
 		exit(1);
 	}
 	
@@ -86,8 +89,12 @@ for (uint64_t i=0;i<torrent.peer_count;i++)
 	memset(&server, '\0', sizeof(server));
 	
 	server.sin_family = AF_INET;
-	server.sin_port = torrent.peers[i].peer_port;
-	server.sin_addr.s_addr =  htonl(torrent.peers[i].peer_address[i];//sprintf(buffer,leg_buffer,"%d.%d.&d.&d",peer_address[0],peer_address[1],peer_address[2],peer_address[3]);
+	server.sin_port = htons(torrent.peers[i].peer_port);
+	//printf(torrent.peers[i].peer_port);
+	printf("%" PRIu16 "\n",server.sin_port);
+	printf("%" PRIu8 "\n", torrent.peers[i].peer_address[i]);
+	//server.sin_addr.s_addr =  inet_addr((char*)torrent.peers[i].peer_address[i]);
+	//sprintf(buffer,leg_buffer,"%d.%d.&d.&d",peer_address[0],peer_address[1],peer_address[2],peer_address[3]);
 	 
 	 
 	int conn = connect(socketClient, ( struct sockaddr*)&server, sizeof(server));
