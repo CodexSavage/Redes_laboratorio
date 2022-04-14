@@ -14,6 +14,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <inttypes.h>
+#include <string.h>
 
 // TODO: hey!? what is this?
 
@@ -60,133 +61,122 @@ int main(int argc, char **argv) {
 	
 	//-----------------------------------------
 
-	/*
-	if ( create_torrent_from_metainfo_file("file.torrent", (struct torrent_t*)&torrent, "file")){
-		//handle error
-	}*/
-	const char metainfo_file_name []="/mnt/d/CODEXSAVAGE/Descargas/Projects/C/Redes/Redes_laboratorio/Client/torrent_samples/client/test_file.ttorrent";
+	const char metainfo_file_name []= "/home/codexsavage/Downloads/University/Redes/Redes_laboratorio/Client/torrent_samples/client/test_file.ttorrent";
 	const char downloaded_file_name []="test_file";
 
 	int create = create_torrent_from_metainfo_file(metainfo_file_name,&torrent,downloaded_file_name);
 	if (create < 0 )
 	{
-		//handle error
 		printf("Error: %s\n", strerror(errno));
 		exit(1);
 	}
-	
-for (uint64_t i=0;i<torrent.peer_count;i++)
-{
-
-	int socketClient = socket( AF_INET, SOCK_STREAM,0);
-	
-	if (socketClient < 0)
+	int socketClient = socket(AF_INET,SOCK_STREAM,0);
+	if ( socketClient < 0)
 	{
-	  printf("ERROR: %s\n", strerror(errno));
-	  exit(1);
-	}	
-	printf("[+]Socket client is created \n");
-	memset(&server, '\0', sizeof(server));
-	
-	server.sin_family = AF_INET;
-	server.sin_port = htons(torrent.peers[i].peer_port);
-	//printf(torrent.peers[i].peer_port);
-	printf("%" PRIu16 "\n",server.sin_port);
-	printf("%" PRIu8 "\n", torrent.peers[i].peer_address[i]);
-	//server.sin_addr.s_addr =  inet_addr((char*)torrent.peers[i].peer_address[i]);
-	//sprintf(buffer,leg_buffer,"%d.%d.&d.&d",peer_address[0],peer_address[1],peer_address[2],peer_address[3]);
-	 
-	 
-	int conn = connect(socketClient, ( struct sockaddr*)&server, sizeof(server));
-	
-	if ( conn < 0 )
-	{
-	  printf("ERROR: %s\n",strerror(errno));
-	  exit(1);
+		printf("ERROR: %s\n", strerror(errno));
+		exit(1);
 	}
-	printf("[+]Connection succes");
-	
-	
-	if (torrent.block_map[0])
+	printf("[+]Socket client is created \n");
+	for (uint64_t i=0;i<torrent.peer_count;i++)
 	{
-		//block 0 is avaible
-		struct block_t block;
-		
-		if ( load_block(&torrent,0,&block))
-		
+		char buffer_direccion[10];	
+		//memset(&server, '\0', sizeof(server));
+		//server.sin_family = AF_INET;
+		//server.sin_port = htons(torrent.peers[i].peer_port);
+		//printf("%" PRIu16 "\n",server.sin_port);
+		int number0 = (int)torrent.peers[i].peer_address[0];
+		int number1 = (int)torrent.peers[i].peer_address[1];
+		int number2 = (int)torrent.peers[i].peer_address[2];
+		int number3 = (int)torrent.peers[i].peer_address[3];
+		//printf("%s.%s.%s.%s \n",number0, number1, number2, number3);
+		sprintf(buffer_direccion, "%d.%d.%d.%d", number0,number1,number2,number3);
+		memset(&server,'\0',sizeof(server));
+		server.sin_family = AF_INET;
+		server.sin_port = htons(torrent.peers[i].peer_port);
+		server.sin_addr.s_addr = inet_addr(buffer_direccion);
+		printf("Valor %s \n", buffer_direccion);
+		int conn = connect(socketClient, (struct sockaddr*)&server, sizeof(server));
+		if ( conn < 0 )
 		{
-			//Almacena un bloque en el archivo descargado
-			//habdle error
+		  printf("ERROR: connect %s\n",strerror(errno));
+		  exit(1);
+		}
+		printf("[+]Connection succes");
+		if (torrent.block_map[0])
+		{
+			//block 0 is avaible
+			struct block_t block;
+			if ( load_block(&torrent,0,&block))
+			
+			{
+				//Almacena un bloque en el archivo descargado
+				//habdle error
+			}
+			
+		}
+			//do stuff with this block... --> hacer cosas con este bloque
+			
+		//https://stackoverflow.com/questions/50307278/how-to-get-peers-ips-and-ports-from-tracker-response
+		
+		for (uint64_t h=0;h<torrent.block_count;h++)
+		{
+			buffer[0]=(uint8_t)(((uint8_t)MAGIC_NUMBER>>24)&&0xff);
+			buffer[1]=(uint8_t)(((uint8_t)MAGIC_NUMBER>>16)&&0xff);
+			buffer[2]=(uint8_t)(((uint8_t)MAGIC_NUMBER>>8)&&0xff);
+			buffer[3]=(uint8_t)(((uint8_t)MAGIC_NUMBER>>0)&&0xff);
+			buffer[4]=MSG_REQUEST;
+			buffer[5]=(h>>56) && 0xff;
+			buffer[6]=(h>>48) && 0xff;
+			buffer[7]=(h>>40) && 0xff;
+			buffer[8]=(h>>32) && 0xff;
+			buffer[9]=(h>>24) && 0xff;
+			buffer[10]=(h>>16)&& 0xff;
+			buffer[11]=(h>>8) && 0xff;
+			buffer[12]=(h>>0) && 0xff;
+		}
+	 	ssize_t rec = recv(socketClient, buffer, len_buffer,0);
+		if ( rec < 0 )
+		{
+	   	printf("Error recv: %s\n", strerror(errno));
+			exit(1);
+		}
+		struct block_t another_block;
+		// fill this block somehow...--> llene este bloque de alguna manera
+		int r = store_block(&torrent,1,&another_block);
+		//desasigna todos los campos necesarios en una estructura torrent_t.
+		//También cierra el arroyo downloaded_files_stream
+		
+		
+		
+		if (r)
+		{
+			printf("ERROR: store_block has been ocurred %s\n",strerror(errno));
+			exit(1);
+			//block was not stored correctly, either because of an invalid has pr because of an I/O error.
+			//El bloque no se almacenó correctamente, ya sea debido a un pr no válido, debido a un error de E/S.
+		} 
+		else 
+		{
+			// the block was correctly stored and torrent.block_map[1] evaluates now to true.
+			// El bloque fue correctamente almacenado y torrent.block_map[1] evaluado ahora como verdadero
+			assert(torrent.block_map[1]);
 		}
 		
-	}
-		//do stuff with this block... --> hacer cosas con este bloque
 		
-	//https://stackoverflow.com/questions/50307278/how-to-get-peers-ips-and-ports-from-tracker-response
-	
-	for (uint64_t h=0;h<torrent.block_count;h++)
-	{
-		buffer[0]=(uint8_t)(((uint8_t)MAGIC_NUMBER>>24)&&0xff);
-		buffer[1]=(uint8_t)(((uint8_t)MAGIC_NUMBER>>16)&&0xff);
-		buffer[2]=(uint8_t)(((uint8_t)MAGIC_NUMBER>>8)&&0xff);
-		buffer[3]=(uint8_t)(((uint8_t)MAGIC_NUMBER>>0)&&0xff);
-		buffer[4]=MSG_REQUEST;
-		buffer[5]=(h>>56) && 0xff;
-		buffer[6]=(h>>48) && 0xff;
-		buffer[7]=(h>>40) && 0xff;
-		buffer[8]=(h>>32) && 0xff;
-		buffer[9]=(h>>24) && 0xff;
-		buffer[10]=(h>>16)&& 0xff;
-		buffer[11]=(h>>8) && 0xff;
-		buffer[12]=(h>>0) && 0xff;
-	
- 	ssize_t rec = recv(socketClient, buffer, len_buffer,0);
-	  if ( rec < 0 )
-	  {
-  	  	printf("Error: %s\n", strerror(errno));
-		exit(1);
-	  }
-	struct block_t another_block;
-	// fill this block somehow...--> llene este bloque de alguna manera
-	int r = store_block(&torrent,1,&another_block);
-	//desasigna todos los campos necesarios en una estructura torrent_t.
-	//También cierra el arroyo downloaded_files_stream
-	
-	
-	
-	if (r)
-	{
-		printf("ERROR: has been ocurred %s\n",strerror(errno));
-		exit(1);
-		//block was not stored correctly, either because of an invalid has pr because of an I/O error.
-		//El bloque no se almacenó correctamente, ya sea debido a un pr no válido, debido a un error de E/S.
-	} 
-	else 
-	{
-		// the block was correctly stored and torrent.block_map[1] evaluates now to true.
-		// El bloque fue correctamente almacenado y torrent.block_map[1] evaluado ahora como verdadero
-		assert(torrent.block_map[1]);
-	}
-	
-	
 	  ssize_t sen = send(socketClient, buffer, len_buffer,0);
 	  if ( sen < 0 )
 	  {
-	    printf("ERROR:Disconnection has been ocurred");
+	    printf("ERROR: send %s\n", strerror(errno));
 	    exit(1);
 	  }
-	  
-	  
-	if(destroy_torrent(&torrent))
-	{
-		printf("ERROR:Disconnection has been ocurred");
-	    	exit(1);
+		if(destroy_torrent(&torrent))
+		{
+			printf("ERROR: fail destroy torrent %s\n", strerror(errno));
+	   	exit(1);
 		// error handling --> manejo de error
-	}
+		}
 	 
 	}
 	close(socketClient);
-	
-}
 	return 0;
 }
